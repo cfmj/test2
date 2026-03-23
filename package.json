@@ -1,0 +1,28 @@
+{
+  "name": "web-env-detector",
+  "version": "1.0.0",
+  "description": "Detect automation (WebDriver/Puppeteer/Playwright/Selenium) and incognito/private browsing environments, then inject findings into custom HTTP request headers.",
+  "main": "src/env-detector.js",
+  "type": "module",
+  "scripts": {
+    "demo": "npx serve demo -l 8080",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --testEnvironment=node",
+    "build": "node build.js"
+  },
+  "keywords": [
+    "automation-detection",
+    "incognito-detection",
+    "webdriver",
+    "headless",
+    "puppeteer",
+    "playwright",
+    "selenium",
+    "fingerprint"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}
