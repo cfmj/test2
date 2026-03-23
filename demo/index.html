@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Web 环境检测 Demo — Web Environment Detector</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f0f4f8;
+      color: #1a202c;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      color: #718096;
+      margin-bottom: 24px;
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1);
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 1.05rem;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .badge-red    { background: #fed7d7; color: #c53030; }
+    .badge-green  { background: #c6f6d5; color: #276749; }
+    .badge-yellow { background: #fefcbf; color: #744210; }
+    .badge-gray   { background: #e2e8f0; color: #4a5568; }
+    .badge-blue   { background: #bee3f8; color: #2b6cb0; }
+
+    .signal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .signal-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: #f7fafc;
+    }
+
+    .signal-icon { font-size: 1rem; }
+
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .header-table th,
+    .header-table td {
+      text-align: left;
+      padding: 6px 10px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .header-table th {
+      background: #edf2f7;
+      font-weight: 600;
+    }
+
+    .header-table td:first-child { font-family: monospace; color: #2b6cb0; }
+    .header-table td:last-child  { font-family: monospace; color: #276749; }
+
+    button#runBtn {
+      background: #3182ce;
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      margin-bottom: 20px;
+      transition: background .2s;
+    }
+
+    button#runBtn:hover { background: #2b6cb0; }
+    button#runBtn:disabled { background: #90cdf4; cursor: not-allowed; }
+
+    .loading { color: #718096; font-style: italic; }
+
+    pre {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    .env-type-banner {
+      font-size: 1.1rem;
+      font-weight: 700;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+    }
+    .env-normal          { background: #c6f6d5; color: #22543d; }
+    .env-automation      { background: #fed7d7; color: #742a2a; }
+    .env-incognito       { background: #fefcbf; color: #744210; }
+    .env-automation-incognito { background: #fed7d7; color: #742a2a; }
+  </style>
+</head>
+<body>
+
+<h1>🔍 Web 环境检测 Demo</h1>
+<p class="subtitle">
+  检测当前浏览器是否运行在自动化环境（WebDriver / Puppeteer / Playwright / Selenium）
+  或无痕 / 隐私浏览模式中，并自动将检测结果注入到 HTTP 请求头。
+</p>
+
+<button id="runBtn">▶ 开始检测 / Run Detection</button>
+
+<div id="results" style="display:none;">
+
+  <div class="card" id="summaryCard">
+    <h2>📋 综合结论 / Summary</h2>
+    <div id="envBanner" class="env-type-banner"></div>
+    <div class="status-row">
+      <span>自动化环境：</span>
+      <span id="autoStatus" class="badge"></span>
+      <span id="autoConfidence" class="badge badge-gray"></span>
+    </div>
+    <div class="status-row">
+      <span>无痕/隐私模式：</span>
+      <span id="incogStatus" class="badge"></span>
+      <span id="incogConfidence" class="badge badge-gray"></span>
+    </div>
+    <div class="status-row" id="quotaRow" style="display:none;">
+      <span>存储配额：</span>
+      <span id="quotaValue" class="badge badge-blue"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🤖 自动化检测信号 / Automation Signals</h2>
+    <div class="signal-grid" id="autoSignals"></div>
+  </div>
+
+  <div class="card">
+    <h2>🕵️ 无痕模式检测信号 / Incognito Signals</h2>
+    <div class="signal-grid" id="incogSignals"></div>
+  </div>
+
+  <div class="card">
+    <h2>📤 注入的自定义请求头 / Injected HTTP Headers</h2>
+    <p style="font-size:.85rem;color:#718096;margin-top:0;">
+      以下请求头会被自动添加到页面发出的每个 fetch / XHR 请求中。
+    </p>
+    <table class="header-table" id="headersTable">
+      <thead><tr><th>Header</th><th>Value</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p id="noHeaders" style="color:#718096;font-size:.85rem;display:none;">
+      未检测到异常环境，不会注入额外请求头（仅注入 X-Env-Type: normal）。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>🌐 实时请求测试 / Live Request Test</h2>
+    <p style="font-size:.85rem;color:#718096;margin-top:0;">
+      点击下方按钮向 <code>https://httpbin.org/headers</code> 发送请求，
+      验证自定义请求头是否成功注入（结果显示在 JSON 中）。
+    </p>
+    <button id="testBtn" style="background:#38a169;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:.9rem;">
+      发送测试请求 / Send Test Request
+    </button>
+    <pre id="requestResult" style="margin-top:12px;display:none;"></pre>
+  </div>
+
+  <div class="card">
+    <h2>📄 原始结果 / Raw Result</h2>
+    <pre id="rawJson"></pre>
+  </div>
+
+</div>
+
+<script type="module">
+  import { detect } from '../src/env-detector.js';
+
+  const runBtn   = document.getElementById('runBtn');
+  const results  = document.getElementById('results');
+  const testBtn  = document.getElementById('testBtn');
+
+  const SIGNAL_LABELS = {
+    // Automation
+    webdriverFlag:         'navigator.webdriver 标志',
+    missingChrome:         '缺少 window.chrome',
+    emptyPlugins:          '插件列表为空',
+    injectedProperties:    '自动化注入属性',
+    headlessUserAgent:     '无头 UA 字符串',
+    missingLanguages:      '语言配置缺失',
+    notificationPermission:'通知权限异常',
+    zeroRtt:               '网络 RTT 为 0',
+    documentFocus:         '文档失去焦点',
+    // Incognito
+    localStorageBlocked:   'localStorage 被阻止',
+    serviceWorkerUnavailable: 'Service Worker 不可用',
+    storageQuotaLow:       '存储配额过低',
+    indexedDBBlocked:      'IndexedDB 被阻止',
+  };
+
+  function renderSignals(containerId, signals) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    for (const [key, value] of Object.entries(signals)) {
+      const label = SIGNAL_LABELS[key] || key;
+      const div = document.createElement('div');
+      div.className = 'signal-item';
+      div.innerHTML = `
+        <span class="signal-icon">${value ? '🔴' : '🟢'}</span>
+        <span>${label}</span>
+        <span class="badge ${value ? 'badge-red' : 'badge-green'}" style="margin-left:auto;">
+          ${value ? '触发' : '正常'}
+        </span>`;
+      container.appendChild(div);
+    }
+  }
+
+  runBtn.addEventListener('click', async () => {
+    runBtn.disabled = true;
+    runBtn.textContent = '检测中… / Detecting…';
+
+    let result;
+    try {
+      result = await detect({ installInterceptor: true, verbose: true });
+    } catch (err) {
+      runBtn.disabled = false;
+      runBtn.textContent = '▶ 重新检测 / Run Again';
+      alert('检测出错: ' + err.message);
+      return;
+    }
+
+    // Summary
+    const envBanner = document.getElementById('envBanner');
+    const envClassMap = {
+      'normal': 'env-normal',
+      'automation': 'env-automation',
+      'incognito': 'env-incognito',
+      'automation+incognito': 'env-automation-incognito',
+    };
+    const envLabelMap = {
+      'normal': '✅ 正常浏览器环境 / Normal Browser',
+      'automation': '🤖 检测到自动化环境 / Automation Detected',
+      'incognito': '🕵️ 检测到无痕模式 / Incognito Detected',
+      'automation+incognito': '🤖🕵️ 自动化 + 无痕模式 / Automation + Incognito',
+    };
+    envBanner.className = 'env-type-banner ' + (envClassMap[result.envType] || 'env-normal');
+    envBanner.textContent = envLabelMap[result.envType] || result.envType;
+
+    const autoStatus = document.getElementById('autoStatus');
+    autoStatus.className = 'badge ' + (result.isAutomation ? 'badge-red' : 'badge-green');
+    autoStatus.textContent = result.isAutomation ? '是 / Yes' : '否 / No';
+
+    const autoConf = document.getElementById('autoConfidence');
+    autoConf.textContent = '置信度: ' + result.automationConfidence;
+
+    const incogStatus = document.getElementById('incogStatus');
+    incogStatus.className = 'badge ' + (result.isIncognito ? 'badge-yellow' : 'badge-green');
+    incogStatus.textContent = result.isIncognito ? '是 / Yes' : '否 / No';
+
+    const incogConf = document.getElementById('incogConfidence');
+    incogConf.textContent = '置信度: ' + result.incognitoConfidence;
+
+    if (result.quotaMB !== null) {
+      document.getElementById('quotaRow').style.display = 'flex';
+      document.getElementById('quotaValue').textContent = result.quotaMB + ' MB';
+    }
+
+    // Signals
+    renderSignals('autoSignals', result.automationSignals);
+    renderSignals('incogSignals', result.incognitoSignals);
+
+    // Headers table
+    const tbody = document.querySelector('#headersTable tbody');
+    tbody.innerHTML = '';
+    const headerEntries = Object.entries(result.headers);
+    if (headerEntries.length === 0) {
+      document.getElementById('noHeaders').style.display = 'block';
+    } else {
+      document.getElementById('noHeaders').style.display = 'none';
+      for (const [key, value] of headerEntries) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${key}</td><td>${value}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    // Raw JSON
+    document.getElementById('rawJson').textContent =
+      JSON.stringify(result, null, 2);
+
+    results.style.display = 'block';
+    runBtn.disabled = false;
+    runBtn.textContent = '🔄 重新检测 / Run Again';
+  });
+
+  // Live request test
+  testBtn.addEventListener('click', async () => {
+    testBtn.disabled = true;
+    const resultEl = document.getElementById('requestResult');
+    resultEl.style.display = 'block';
+    resultEl.textContent = '请求中… / Sending…';
+    try {
+      const resp = await fetch('https://httpbin.org/headers');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      resultEl.textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+      resultEl.textContent = '请求失败 / Request failed: ' + err.message +
+        '\n\n（请检查网络连接或 CORS 策略）';
+    }
+    testBtn.disabled = false;
+  });
+</script>
+</body>
+</html>
